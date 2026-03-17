@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "29158914377",
+    "project_id": "uber-flutter-27c11",
+    "storage_bucket": "uber-flutter-27c11.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:29158914377:android:ce0645ab588acf55ec8298",
+        "android_client_info": {
+          "package_name": "com.example.uber_flutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnlPYvRGcgy2CpfzvOlmbowPlbp42_vrs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
