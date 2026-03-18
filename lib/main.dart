@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:uber_flutter/firebase_options.dart';
+import 'package:uber_flutter/routes/routes.dart';
 import 'package:uber_flutter/screens/home_screen.dart';
 
 void main() async {
@@ -26,6 +27,8 @@ void main() async {
         ),
         secondaryHeaderColor: Color(0xff546e7a)
       ),
+      initialRoute: "/",
+      onGenerateRoute: Routes.generateRoute,
       
     )
   );
