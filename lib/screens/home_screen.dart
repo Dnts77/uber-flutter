@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uber_flutter/screens/sign_up_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -120,7 +121,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Colors.white
                       )
                     ),
-                    onTap: (){},
+                    onTap: (){
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => SignUpScreen()));
+                    },
                   )
                 ),
                 Padding(
