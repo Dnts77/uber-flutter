@@ -17,6 +17,15 @@ void main() async {
       home: HomeScreen(),
       title: "Uber",
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        appBarTheme: AppBarTheme(
+          backgroundColor: Color(0xff47474f),
+          shadowColor: Color(0xff546e7a),
+          elevation: 3,
+          foregroundColor: Colors.white,
+        ),
+        secondaryHeaderColor: Color(0xff546e7a)
+      ),
       
     )
   );
