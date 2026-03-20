@@ -41,7 +41,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Painel passageiro"),
+        title: const Text("Painel passageiro"),
         actions: [
           PopupMenuButton<String>(
             onSelected: _menuItemChoice,
