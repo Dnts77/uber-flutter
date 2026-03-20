@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:uber_flutter/model/Usuario.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,6 +17,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _controllerEmail = TextEditingController(); // Controlador do email
   final TextEditingController _controllerSenha = TextEditingController(); // Controlador da senha
   String _errorMessage = "";
+  bool _loading = false;
 
 
   //Validação dos campos
@@ -55,20 +57,60 @@ class _HomeScreenState extends State<HomeScreen> {
     //Logando usuário
     void _logInUser(Usuario usuario){
 
+      setState(() {
+        _loading = true;
+      });
+
       FirebaseAuth auth = FirebaseAuth.instance;
       auth.signInWithEmailAndPassword(
         email: usuario.email,
         password: usuario.senha
       ).then((firebaseUser){
-        Navigator.pushReplacementNamed(context, "/painel-passageiro"); 
+        _redirectPanelByUserType(firebaseUser.user!.uid);
       }).catchError((e){
         _errorMessage = "Erro ao autenticar usuário, verifique os campos novamente";
       });
-
     }
 
+
+    //Redirecionando telas dinamicamente 
+    Future<void> _redirectPanelByUserType(String idUsuario) async{
+      FirebaseFirestore db = FirebaseFirestore.instance;
+      DocumentSnapshot snapshot = await db.collection("usuarios").doc(idUsuario).get();
+
+      Map<String, dynamic> dados = snapshot.data() as Map<String, dynamic>;
+      String tipoUsuario = dados["tipoUsuario"];
+
+      setState(() {
+        _loading = false;
+      });
+
+      switch(tipoUsuario){
+        case "motorista":
+          Navigator.pushReplacementNamed(context, "/painel-motorista"); 
+          break;
+        case "passageiro":
+          Navigator.pushReplacementNamed(context, "/painel-passageiro"); 
+          break;
+      }
+    }
+
+
+    // Verificando usuário logado
+    Future<void> _checkLoggedUser() async{
+      FirebaseAuth auth = FirebaseAuth.instance;
+      User? loggedUser = auth.currentUser;
+      if(loggedUser != null){
+        String idUsuario = loggedUser.uid;
+        _redirectPanelByUserType(idUsuario);
+      }
+    }
    
-  
+  @override
+  void initState() {
+    super.initState();
+    _checkLoggedUser();
+  }
 
 
   @override
@@ -184,6 +226,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   )
                 ),
+                _loading ? 
+                  Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: Center(child: CircularProgressIndicator(backgroundColor: Colors.white, color: Color(0xff1ebbd8)))
+                  ) : Container(),
                 Padding(
                   padding: const EdgeInsets.only(top: 16),
                   child: Center(
