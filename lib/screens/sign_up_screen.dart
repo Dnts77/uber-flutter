@@ -85,7 +85,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
           return Navigator.pushNamedAndRemoveUntil(context, "/painel-passageiro", (_)=>false);
         }
       }
-    );
+    ).catchError((e){
+      return _errorMessage = "Erro ao cadastrar usuário. Tente novamente...";
+    });
 
   }
 
