@@ -25,6 +25,10 @@ void main() async {
           elevation: 3,
           foregroundColor: Colors.white,
         ),
+        textSelectionTheme: TextSelectionThemeData(
+          cursorColor: Color(0xff1ebbd8),
+          selectionHandleColor: Color(0xff1ebbd8)
+        ),
         secondaryHeaderColor: Color(0xff546e7a)
       ),
       initialRoute: "/",
