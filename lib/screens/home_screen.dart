@@ -1,4 +1,8 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
+import 'package:uber_flutter/model/Usuario.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,7 +15,60 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final TextEditingController _controllerEmail = TextEditingController(); // Controlador do email
   final TextEditingController _controllerSenha = TextEditingController(); // Controlador da senha
+  String _errorMessage = "";
 
+
+  //Validação dos campos
+  void _validateFields(){
+    String email = _controllerEmail.text;
+    String senha = _controllerSenha.text;
+
+     if(email.isNotEmpty && email.contains("@")){
+        
+        if(senha.isNotEmpty && senha.length > 6 ){
+
+          Usuario usuario = Usuario();
+          usuario.email = email;
+          usuario.senha = senha;
+          
+
+          _logInUser( usuario );
+        }
+
+        else{
+
+          setState(() {
+            _errorMessage = "Preencha a senha!";
+          });
+
+        }
+      }
+      
+      else{
+        setState(() {
+          _errorMessage = "Preencha o email!";
+        });
+      }
+    }
+
+
+    //Logando usuário
+    void _logInUser(Usuario usuario){
+
+      FirebaseAuth auth = FirebaseAuth.instance;
+      auth.signInWithEmailAndPassword(
+        email: usuario.email,
+        password: usuario.senha
+      ).then((firebaseUser){
+        Navigator.pushReplacementNamed(context, "/painel-passageiro"); 
+      }).catchError((e){
+        _errorMessage = "Erro ao autenticar usuário, verifique os campos novamente";
+      });
+
+    }
+
+   
+  
 
 
   @override
@@ -94,7 +151,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 16, bottom: 10),
                   child: ElevatedButton(
-                    onPressed: (){},
+                    onPressed: (){
+                      _validateFields();
+                    },
                     style: const ButtonStyle(
                       backgroundColor: WidgetStatePropertyAll(
                         Color(0xff1ebbd8),
@@ -128,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 16),
                   child: Center(
-                    child: const Text("Erro", style: TextStyle(color: Colors.red, fontSize: 20),),
+                    child: Text(_errorMessage, style: TextStyle(color: Colors.red, fontSize: 20),),
                   ),
                 )
               ],
