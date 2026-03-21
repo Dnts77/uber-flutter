@@ -2,6 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'dart:async';
+
 
 class PassengerPanel extends StatefulWidget {
   const PassengerPanel({super.key});
@@ -11,6 +14,8 @@ class PassengerPanel extends StatefulWidget {
 }
 
 class _PassengerPanelState extends State<PassengerPanel> {
+
+  Completer<GoogleMapController> _mapController = Completer();
 
   List<String> menuItems = [
     "Deslogar", "Configurações"
@@ -36,6 +41,11 @@ class _PassengerPanelState extends State<PassengerPanel> {
     Navigator.pushReplacementNamed(context, "/");
   }
 
+  // Método do mapa
+  void _onMapCreated(GoogleMapController controller){
+    _mapController.complete(controller);
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +64,17 @@ class _PassengerPanelState extends State<PassengerPanel> {
           )
         ],
       ),
-      body: Container(),
+      body: Container(
+        padding: EdgeInsets.only(bottom: 2),
+        child: GoogleMap(
+          mapType: MapType.normal,
+          initialCameraPosition: CameraPosition(
+            target: LatLng(-23.472297, -46.530986),
+            zoom: 16
+          ),
+          onMapCreated: _onMapCreated,
+        ),
+      ),
     );
   }
 }
