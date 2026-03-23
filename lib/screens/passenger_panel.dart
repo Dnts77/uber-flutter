@@ -145,11 +145,108 @@ class _PassengerPanelState extends State<PassengerPanel> {
       ),
       body: Container(
         padding: EdgeInsets.only(bottom: 2),
-        child: GoogleMap(
-          mapType: MapType.normal,
-          initialCameraPosition: _cameraPosition,
-          onMapCreated: _onMapCreated,
-          myLocationEnabled: true,
+        child: Stack( // Stack widget -> Empilha outros widgets em ordem (últimos sobrepoem os primeiros)
+          children: [
+            GoogleMap(
+              mapType: MapType.normal,
+              initialCameraPosition: _cameraPosition,
+              onMapCreated: _onMapCreated,
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+            ),
+            Positioned( // Positioned Widget -> posiciona widgets dentro do Stack
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: EdgeInsets.all(10),
+                child: SizedBox(
+                  height: 50,
+                  width: double.infinity,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(3),
+                      color: Colors.white
+                    ),
+                    child: TextField(
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        icon: Container(
+                            width: 10,
+                            height: 23.2,
+                            margin: const EdgeInsets.only(left: 10),
+                            child: const Icon(Icons.location_on, color: Colors.green,),
+                          ),
+                        hintText: "Meu local",
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.only(left: 15)
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            ),
+
+            Positioned( // Positioned Widget -> posiciona widgets dentro do Stack
+              top: 55,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: EdgeInsets.all(10),
+                child: SizedBox(
+                  height: 50,
+                  width: double.infinity,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(3),
+                      color: Colors.white
+                    ),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        icon: Container(
+                            width: 10,
+                            height: 23.2,
+                            margin: const EdgeInsets.only(left: 10),
+                            child: const Icon(Icons.local_taxi, color: Colors.black)
+                          ),
+                        hintText: "Digite o destino",
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.only(left: 15)
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            ),
+            Positioned(
+              right: 0,
+              left: 0,
+              bottom: 25,
+              child: Padding(
+                padding: EdgeInsets.all(10),
+                child: ElevatedButton(
+                    onPressed: (){  },
+                    style: const ButtonStyle(
+                      backgroundColor: WidgetStatePropertyAll(
+                        Color(0xff1ebbd8),
+                      ),
+                      padding: WidgetStatePropertyAll(
+                        EdgeInsets.fromLTRB(32, 16, 32, 16)
+                      )
+                    ),
+                    child: const Text(
+                      "Chamar Uber",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20
+                      ),
+                    ),
+                  )
+              ),
+            )
+          ],
         ),
       ),
     );
