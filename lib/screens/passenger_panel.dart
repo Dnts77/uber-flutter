@@ -22,6 +22,8 @@ class _PassengerPanelState extends State<PassengerPanel> {
     target: LatLng(-23.472297, -46.530986),
   );
 
+  final Set<Marker> _markers = {};
+
   List<String> menuItems = [
     "Deslogar", "Configurações"
   ];
@@ -56,6 +58,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
     Position? position = await Geolocator.getLastKnownPosition();
     setState(() {
       if(position != null){
+        _showPassengerMarker(position);
         _cameraPosition = CameraPosition(
           target: LatLng(position.latitude, position.longitude),
           zoom: 19,
@@ -73,6 +76,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
       distanceFilter: 10
     );
     Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position){
+      _showPassengerMarker(position);
       _cameraPosition = CameraPosition(
           target: LatLng(position.latitude, position.longitude),
           zoom: 19,
@@ -119,6 +123,29 @@ class _PassengerPanelState extends State<PassengerPanel> {
     _addLocationListener();
   }
 
+  //Exibindo o marcador do passageiro
+  Future<void> _showPassengerMarker(Position local) async{
+    double pixelRatio = MediaQuery.of(context).devicePixelRatio;
+
+    Marker passengerMarker = Marker(
+      markerId: MarkerId("marcador-passageiro"),
+      position: LatLng(local.latitude, local.longitude),
+      infoWindow: InfoWindow(
+        title: "Meu local"
+      ),
+      icon: await BitmapDescriptor.asset(
+        width: 70,
+        height: 70,
+        ImageConfiguration(devicePixelRatio: pixelRatio),
+        "assets/imgs/passageiro.png"
+      )
+    );
+    setState(() {
+      _markers.add(passengerMarker);
+    });
+
+  }
+
   @override
   void initState() {
     super.initState();
@@ -151,8 +178,9 @@ class _PassengerPanelState extends State<PassengerPanel> {
               mapType: MapType.normal,
               initialCameraPosition: _cameraPosition,
               onMapCreated: _onMapCreated,
-              myLocationEnabled: true,
+              //myLocationEnabled: true,
               myLocationButtonEnabled: false,
+              markers: _markers,
             ),
             Positioned( // Positioned Widget -> posiciona widgets dentro do Stack
               top: 0,
