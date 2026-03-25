@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:uber_flutter/model/Destiny.dart';
 
 
 class PassengerPanel extends StatefulWidget {
@@ -17,6 +19,7 @@ class PassengerPanel extends StatefulWidget {
 class _PassengerPanelState extends State<PassengerPanel> {
 
   final Completer<GoogleMapController> _mapController = Completer();
+  final TextEditingController _destinyController = TextEditingController(text: "Rua Força Pública, 89"); //Controller do botão "Chamar Uber"
 
   CameraPosition _cameraPosition = CameraPosition(
     target: LatLng(-23.472297, -46.530986),
@@ -143,7 +146,59 @@ class _PassengerPanelState extends State<PassengerPanel> {
     setState(() {
       _markers.add(passengerMarker);
     });
+  }
 
+
+  //Chamando uber
+  Future<void> _callUber() async{
+    String destinyAddress = _destinyController.text;
+    if(destinyAddress.isNotEmpty){
+      List<Location> locationConvert = await locationFromAddress(destinyAddress);
+      List<Placemark> addressList = await placemarkFromCoordinates(locationConvert[0].latitude, locationConvert[0].longitude);
+        if(addressList.isNotEmpty){
+          Placemark address = addressList[0];
+          Destiny destiny = Destiny();
+          destiny.cidade = address.administrativeArea!;
+          destiny.cep = address.postalCode!;
+          destiny.bairro = address.subLocality!;
+          destiny.rua = address.thoroughfare!;
+          destiny.numero = address.subThoroughfare!;
+          destiny.latitude = locationConvert[0].latitude;
+          destiny.longitude = locationConvert[0].longitude;
+
+          String addressConfirmation;
+          addressConfirmation = "\n Cidade: ${destiny.cidade}";
+          addressConfirmation += "\n Rua: ${destiny.rua}, ${destiny.numero}";
+          addressConfirmation += "\n Bairro: ${destiny.bairro}";
+          addressConfirmation += "\n CEP: ${destiny.cep}";
+
+          showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: Text("Confirmação do endereço"),
+                content: Text(addressConfirmation),
+                contentPadding: EdgeInsets.all(16),
+                actions: [
+                  TextButton(
+                    onPressed: ()=> Navigator.pop(context),
+                    child: Text("Cancelar", style: TextStyle(color: Colors.red)),
+                  ),
+                  TextButton(
+                    onPressed: (){
+                      //salvando a requisição
+                      //_saveRequest();
+                      Navigator.pop(context);
+                    },
+                    child: Text("Confirmar", style: TextStyle(color: Colors.green)),
+                  ),
+
+                ],
+              );
+            },
+          );
+        }
+    }
   }
 
   @override
@@ -232,6 +287,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
                       color: Colors.white
                     ),
                     child: TextField(
+                      controller: _destinyController,
                       decoration: InputDecoration(
                         icon: Container(
                             width: 10,
@@ -255,7 +311,9 @@ class _PassengerPanelState extends State<PassengerPanel> {
               child: Padding(
                 padding: EdgeInsets.all(10),
                 child: ElevatedButton(
-                    onPressed: (){  },
+                    onPressed: (){ 
+                      _callUber();
+                     },
                     style: const ButtonStyle(
                       backgroundColor: WidgetStatePropertyAll(
                         Color(0xff1ebbd8),
