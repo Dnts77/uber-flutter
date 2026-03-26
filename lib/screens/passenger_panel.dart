@@ -1,5 +1,5 @@
 // ignore_for_file: use_build_context_synchronously
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -7,6 +7,10 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:uber_flutter/model/Destiny.dart';
+import 'package:uber_flutter/model/Request.dart';
+import 'package:uber_flutter/model/Usuario.dart';
+import 'package:uber_flutter/utils/FirebaseUser.dart';
+import 'package:uber_flutter/utils/RequestStatus.dart';
 
 
 class PassengerPanel extends StatefulWidget {
@@ -187,7 +191,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
                   TextButton(
                     onPressed: (){
                       //salvando a requisição
-                      //_saveRequest();
+                      _saveRequest(destiny);
                       Navigator.pop(context);
                     },
                     child: Text("Confirmar", style: TextStyle(color: Colors.green)),
@@ -199,6 +203,20 @@ class _PassengerPanelState extends State<PassengerPanel> {
           );
         }
     }
+  }
+
+  
+  //Salvando a requisição de chamar uber
+  Future<void> _saveRequest( Destiny destino) async{
+    Request request = Request();
+    Usuario passageiro = await FirebaseUser.getLoggedUserData();
+    request.destino = destino;
+    request.passageiro = passageiro;
+    request.status = RequestStatus.aguardando;
+
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    db.collection("requisicoes").add(request.toMap());
+
   }
 
   @override
