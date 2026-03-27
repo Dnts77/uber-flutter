@@ -31,6 +31,12 @@ class _PassengerPanelState extends State<PassengerPanel> {
 
   final Set<Marker> _markers = {};
 
+  //Controles de exibição
+  bool _showDestinyAddressBox = true;
+  String _buttonText = "Chamar Uber";
+  Color _buttonColor = Color(0xff1ebbd8);
+  late VoidCallback _buttonFunction;
+
   List<String> menuItems = [
     "Deslogar", "Configurações"
   ];
@@ -217,12 +223,41 @@ class _PassengerPanelState extends State<PassengerPanel> {
     FirebaseFirestore db = FirebaseFirestore.instance;
     db.collection("requisicoes").add(request.toMap());
 
+    _waitingStatus();
+
+  }
+
+  //Mudando o botão
+  void _changeMainButton(String text, Color color, VoidCallback function){
+    setState(() {
+      _buttonText = text;
+      _buttonColor = color;
+      _buttonFunction = function;
+    });
+  }
+
+  //Status do Uber
+  void _notCalledUberStatus(){
+    _showDestinyAddressBox = true;
+    _changeMainButton("Chamar Uber", Color(0xff1ebbd8), (){_callUber();});
+  }
+
+  //Status -> Aguardando
+  void _waitingStatus(){
+     _showDestinyAddressBox = false;
+    _changeMainButton("Cancelar", Colors.red, (){_cancelUber();});
+  }
+
+  //Cancelar uber
+  void _cancelUber(){
+
   }
 
   @override
   void initState() {
     super.initState();
     _initLocation();
+    _notCalledUberStatus();
   }
 
 
@@ -255,72 +290,86 @@ class _PassengerPanelState extends State<PassengerPanel> {
               myLocationButtonEnabled: false,
               markers: _markers,
             ),
-            Positioned( // Positioned Widget -> posiciona widgets dentro do Stack
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Padding(
-                padding: EdgeInsets.all(10),
-                child: SizedBox(
-                  height: 50,
-                  width: double.infinity,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(3),
-                      color: Colors.white
-                    ),
-                    child: TextField(
-                      readOnly: true,
-                      decoration: InputDecoration(
-                        icon: Container(
-                            width: 10,
-                            height: 23.2,
-                            margin: const EdgeInsets.only(left: 10),
-                            child: const Icon(Icons.location_on, color: Colors.green,),
+            Visibility(
+              visible: _showDestinyAddressBox,
+              child: Stack(
+                children: [
+                  Positioned(
+                    // Positioned Widget -> posiciona widgets dentro do Stack
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Padding(
+                      padding: EdgeInsets.all(10),
+                      child: SizedBox(
+                        height: 50,
+                        width: double.infinity,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(3),
+                            color: Colors.white,
                           ),
-                        hintText: "Meu local",
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.only(left: 15)
+                          child: TextField(
+                            readOnly: true,
+                            decoration: InputDecoration(
+                              icon: Container(
+                                width: 10,
+                                height: 23.2,
+                                margin: const EdgeInsets.only(left: 10),
+                                child: const Icon(
+                                  Icons.location_on,
+                                  color: Colors.green,
+                                ),
+                              ),
+                              hintText: "Meu local",
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.only(left: 15),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              )
-            ),
-
-            Positioned( // Positioned Widget -> posiciona widgets dentro do Stack
-              top: 55,
-              left: 0,
-              right: 0,
-              child: Padding(
-                padding: EdgeInsets.all(10),
-                child: SizedBox(
-                  height: 50,
-                  width: double.infinity,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(3),
-                      color: Colors.white
-                    ),
-                    child: TextField(
-                      controller: _destinyController,
-                      decoration: InputDecoration(
-                        icon: Container(
-                            width: 10,
-                            height: 23.2,
-                            margin: const EdgeInsets.only(left: 10),
-                            child: const Icon(Icons.local_taxi, color: Colors.black)
+                  Positioned(
+                    // Positioned Widget -> posiciona widgets dentro do Stack
+                    top: 55,
+                    left: 0,
+                    right: 0,
+                    child: Padding(
+                      padding: EdgeInsets.all(10),
+                      child: SizedBox(
+                        height: 50,
+                        width: double.infinity,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(3),
+                            color: Colors.white,
                           ),
-                        hintText: "Digite o destino",
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.only(left: 15)
+                          child: TextField(
+                            controller: _destinyController,
+                            decoration: InputDecoration(
+                              icon: Container(
+                                width: 10,
+                                height: 23.2,
+                                margin: const EdgeInsets.only(left: 10),
+                                child: const Icon(
+                                  Icons.local_taxi,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              hintText: "Digite o destino",
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.only(left: 15),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              )
+                ],
+              ),
             ),
             Positioned(
               right: 0,
@@ -329,19 +378,17 @@ class _PassengerPanelState extends State<PassengerPanel> {
               child: Padding(
                 padding: EdgeInsets.all(10),
                 child: ElevatedButton(
-                    onPressed: (){ 
-                      _callUber();
-                     },
-                    style: const ButtonStyle(
+                    onPressed: _buttonFunction,
+                    style: ButtonStyle(
                       backgroundColor: WidgetStatePropertyAll(
-                        Color(0xff1ebbd8),
+                        _buttonColor,
                       ),
                       padding: WidgetStatePropertyAll(
                         EdgeInsets.fromLTRB(32, 16, 32, 16)
                       )
                     ),
-                    child: const Text(
-                      "Chamar Uber",
+                    child: Text(
+                      _buttonText,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20
