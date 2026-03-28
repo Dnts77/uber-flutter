@@ -24,6 +24,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
 
   final Completer<GoogleMapController> _mapController = Completer();
   final TextEditingController _destinyController = TextEditingController(text: "Rua Força Pública, 89"); //Controller do botão "Chamar Uber"
+  late String _requestId;
 
   CameraPosition _cameraPosition = CameraPosition(
     target: LatLng(-23.472297, -46.530986),
@@ -35,7 +36,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
   bool _showDestinyAddressBox = true;
   String _buttonText = "Chamar Uber";
   Color _buttonColor = Color(0xff1ebbd8);
-  late VoidCallback _buttonFunction;
+  VoidCallback? _buttonFunction;
 
   List<String> menuItems = [
     "Deslogar", "Configurações"
@@ -221,9 +222,17 @@ class _PassengerPanelState extends State<PassengerPanel> {
     request.status = RequestStatus.aguardando;
 
     FirebaseFirestore db = FirebaseFirestore.instance;
-    db.collection("requisicoes").add(request.toMap());
+    
+    //Salvando requisição
+    db.collection("requisicoes").doc(request.id).set(request.toMap());
 
-    _waitingStatus();
+    //Salvando requisição ativa
+    Map<String, dynamic> activeRequestData = {};
+    activeRequestData["id_requisicao"] = request.id;
+    activeRequestData["id_usuario"] = passageiro.idUsuario;
+    activeRequestData["status"] = RequestStatus.aguardando;
+
+   db.collection("requisicao_ativa").doc(passageiro.idUsuario).set(activeRequestData);
 
   }
 
@@ -249,15 +258,55 @@ class _PassengerPanelState extends State<PassengerPanel> {
   }
 
   //Cancelar uber
-  void _cancelUber(){
-
+  Future<void> _cancelUber() async{
+    User user = await FirebaseUser.getCurrentUser();
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    db.collection("requisicoes").doc(_requestId).update({
+      "status" : RequestStatus.cancelada
+    }).then((_){
+      db.collection("requisicao_ativa").doc(user.uid).delete();
+    });
   }
 
+  //Adicionando listener às requisições ativas
+  Future<void> _addActiveRequestListener() async{
+    User user = await FirebaseUser.getCurrentUser();
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    db.collection("requisicao_ativa").doc(user.uid).snapshots().listen((DocumentSnapshot? snapshot){
+      final data = snapshot?.data();
+      if(data != null){
+        Map<String, dynamic> map = data as Map<String, dynamic>;
+        String status = map["status"];
+        _requestId = map["id_requisicao"];
+
+        switch(status){
+          case RequestStatus.aguardando:
+            _waitingStatus();
+            break;
+          case RequestStatus.aCaminho:
+
+            break;
+          case RequestStatus.viagem:
+
+            break;
+          case RequestStatus.finalizada:
+
+            break;
+        }
+      }
+      else{
+        _notCalledUberStatus();
+      }
+    });
+  }
+
+
+  //init state
   @override
   void initState() {
     super.initState();
     _initLocation();
-    _notCalledUberStatus();
+    _addActiveRequestListener();
   }
 
 
