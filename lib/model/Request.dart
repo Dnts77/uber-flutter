@@ -1,17 +1,22 @@
 // ignore_for_file: file_names, unnecessary_getters_setters
 import 'package:uber_flutter/model/Destiny.dart';
 import 'package:uber_flutter/model/Usuario.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Request {
-  late String _id;
+  String? _id;
   late String _status;
   late Usuario _passageiro;
   late Usuario _motorista;
   late Destiny _destino;
   
-  Request();
+  Request(){
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    DocumentReference ref = db.collection("requisicoes").doc();
+    id = ref.id;
+  }
   
-  String get id => _id;
+  String? get id => _id;
   set id(String value) => _id = value;
 
   String get status => _status;
@@ -45,6 +50,7 @@ class Request {
     };
 
     Map<String, dynamic> requestData = {
+      "id" : id,
       "status" : status,
       "passageiro" : passengerData,
       "motorista": null,
