@@ -125,6 +125,9 @@ class _DriverPanelState extends State<DriverPanel> {
                       return ListTile(
                         title: Text(passengerName),
                         subtitle: Text("Destino: $street, $number"),
+                        onTap: (){
+                          Navigator.pushNamed(context, "/corrida", arguments: requestId);
+                        },
                       );
                     },
                   );
