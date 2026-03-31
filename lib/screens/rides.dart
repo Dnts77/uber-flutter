@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:uber_flutter/model/Usuario.dart';
+import 'package:uber_flutter/utils/FirebaseUser.dart';
+import 'package:uber_flutter/utils/RequestStatus.dart';
 
 class Rides extends StatefulWidget {
   const Rides(this.requestId, {super.key});
@@ -21,8 +25,10 @@ class _RidesState extends State<Rides> {
   );
 
   final Set<Marker> _markers = {};
+  Map<String, dynamic> _requestData = {};
 
-  bool _showDestinyAddressBox = true;
+  late Position _driverLocation;
+
   String _buttonText = "Aceitar corrida";
   Color _buttonColor = Color(0xff1ebbd8);
   VoidCallback? _buttonFunction;
@@ -42,6 +48,7 @@ class _RidesState extends State<Rides> {
           zoom: 19,
         );
         _moveCamera(_cameraPosition);
+        _driverLocation = position;
       }
     });
   
@@ -60,6 +67,9 @@ class _RidesState extends State<Rides> {
           zoom: 19,
         );
         _moveCamera(_cameraPosition);
+        setState(() {
+          _driverLocation = position;
+        });
     });
     
   }
@@ -100,7 +110,7 @@ class _RidesState extends State<Rides> {
     });
   }
 
-   void _changeMainButton(String text, Color color, VoidCallback function){
+   void _changeMainButton(String text, Color color, VoidCallback? function){
     setState(() {
       _buttonText = text;
       _buttonColor = color;
@@ -108,10 +118,87 @@ class _RidesState extends State<Rides> {
     });
   }
 
+
+  //Recuperando a requisição
+  Future<void> _recoverRequest() async{
+    String requestId  = widget.requestId;
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    DocumentSnapshot documentSnapshot = await db.collection("requisicoes").doc(requestId).get();
+
+    _requestData = documentSnapshot.data() as Map<String, dynamic>;
+    _addRequestListener();
+  }
+
+  //Adicionando Listener da requisição
+  Future<void>_addRequestListener() async{
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    String requestId = _requestData["id"];
+    db.collection("requisicoes").doc(requestId).snapshots().listen((snapshot){
+      if(snapshot.data() != null){
+        Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+        String status = data["status"];
+
+        switch(status){
+          case RequestStatus.aguardando:
+            _waitingStatus();
+            break;
+          case RequestStatus.aCaminho:
+            _onTheWay();
+            break;
+          case RequestStatus.viagem:
+
+            break;
+          case RequestStatus.finalizada:
+
+            break;
+        }
+
+      }
+    });
+  }
+
+  void _waitingStatus(){
+    _changeMainButton("Aceitar corrida", Color(0xff1ebbd8), (){acceptRide();});
+  }
+
+
+  //Status de "A caminho"
+  void _onTheWay(){
+    _changeMainButton("A caminho do passageiro", Colors.grey, null);
+  }
+
+  //Aceitando corrida
+  Future<void> acceptRide() async{
+
+    Usuario motorista = await FirebaseUser.getLoggedUserData();
+    motorista.latitude = _driverLocation.latitude;
+    motorista.longitude = _driverLocation.longitude;
+
+    String requestId = _requestData["id"];
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    db.collection("requisicoes").doc(requestId).update({
+     "motorista": motorista.toMap(),
+     "status": RequestStatus.aCaminho,
+    }).then((_){
+      String passengerId = _requestData["passageiro"]["idUsuario"];
+      db.collection("requisicao_ativa").doc(passengerId).update({
+        "status": RequestStatus.aCaminho,
+      });
+      
+      String driverId = motorista.idUsuario;
+      db.collection("requisicao_ativa_motorista").doc(driverId).set({
+        "id_requisicao": requestId,
+        "id_usuario": driverId,
+        "status": RequestStatus.aCaminho,
+      });
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _initLocation();
+    _recoverRequest();
   }
 
   @override
