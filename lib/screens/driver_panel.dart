@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uber_flutter/utils/FirebaseUser.dart';
 import 'package:uber_flutter/utils/RequestStatus.dart';
 
 class DriverPanel extends StatefulWidget {
@@ -51,10 +52,27 @@ class _DriverPanelState extends State<DriverPanel> {
     return stream;
   }
 
+
+  //Recuperando as requisições ativas do motorista
+  Future<void> _recoverDriverActiveRequest() async{
+    User user = await FirebaseUser.getCurrentUser();
+    DocumentSnapshot documentSnapshot = db.collection("requisicao_ativa_motorista").doc(user.uid).get() as DocumentSnapshot<Object?>;
+
+    Map<String, dynamic>? requestData = documentSnapshot.data() as Map<String, dynamic>?;
+
+    if(requestData == null){
+      _addRequestListener();
+    }
+    else{
+      String requestId = requestData["id_requisicao"];
+     Navigator.pushReplacementNamed(context, "/corrida", arguments: requestId);                   
+    }
+  } 
+
   @override
   void initState() {
     super.initState();
-    _addRequestListener();
+    _recoverDriverActiveRequest();
   }
 
   @override
