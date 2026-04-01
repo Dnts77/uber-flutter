@@ -237,7 +237,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
   }
 
   //Mudando o botão
-  void _changeMainButton(String text, Color color, VoidCallback function){
+  void _changeMainButton(String text, Color color, VoidCallback? function){
     setState(() {
       _buttonText = text;
       _buttonColor = color;
@@ -255,6 +255,11 @@ class _PassengerPanelState extends State<PassengerPanel> {
   void _waitingStatus(){
      _showDestinyAddressBox = false;
     _changeMainButton("Cancelar", Colors.red, (){_cancelUber();});
+  }
+  //Status -> A caminho
+  void _onTheWay(){
+    _showDestinyAddressBox = false;
+    _changeMainButton("Motorista a caminho", Colors.grey, null);
   }
 
   //Cancelar uber
@@ -284,7 +289,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
             _waitingStatus();
             break;
           case RequestStatus.aCaminho:
-
+            _onTheWay();
             break;
           case RequestStatus.viagem:
 
