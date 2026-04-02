@@ -38,6 +38,8 @@ class Request {
       "email" : passageiro.email,
       "tipoUsuario": passageiro.tipoUsuario,
       "idUsuario" : passageiro.idUsuario,
+      "latitude" : passageiro.latitude,
+      "longitude" : passageiro.longitude,
     };
 
     Map<String, dynamic> destinyData = {
