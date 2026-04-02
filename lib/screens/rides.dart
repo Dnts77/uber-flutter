@@ -24,7 +24,7 @@ class _RidesState extends State<Rides> {
     target: LatLng(-23.472297, -46.530986),
   );
 
-  final Set<Marker> _markers = {};
+  Set<Marker> _markers = {};
   Map<String, dynamic> _requestData = {};
 
   late Position _driverLocation;
@@ -165,6 +165,62 @@ class _RidesState extends State<Rides> {
   //Status de "A caminho"
   void _onTheWay(){
     _changeMainButton("A caminho do passageiro", Colors.grey, null);
+
+    double passengerLatitude = _requestData["passageiro"]["latitude"];
+    double passengerLongitude = _requestData["passageiro"]["longitude"];
+
+    double driverLatitude = _requestData["motorista"]["latitude"];
+    double driverLongitude = _requestData["motorista"]["longitude"];
+
+    _showTwoMarkers(
+      LatLng(driverLatitude, driverLongitude),
+      LatLng(passengerLatitude, passengerLongitude)
+    );
+  }
+
+  //Exibindo dois marcadores
+  Future<void> _showTwoMarkers(LatLng latLng1, LatLng latLng2) async{
+    double pixelRatio = MediaQuery.of(context).devicePixelRatio;
+
+    Set<Marker> markersList = {};
+    Marker marker1 = Marker(
+      markerId: MarkerId("marcador-motorista"),
+      position: LatLng(latLng1.latitude, latLng1.longitude),
+      infoWindow: InfoWindow(
+        title: "Local do motorista"
+      ),
+      icon: await BitmapDescriptor.asset(
+        width: 70,
+        height: 70,
+        ImageConfiguration(devicePixelRatio: pixelRatio),
+        "assets/imgs/motorista.png"
+      )
+    );
+    markersList.add(marker1);
+
+    Marker marker2 = Marker(
+      markerId: MarkerId("marcador-passageiro"),
+      position: LatLng(latLng2.latitude, latLng2.longitude),
+      infoWindow: InfoWindow(
+        title: "Local do passageiro"
+      ),
+      icon: await BitmapDescriptor.asset(
+        width: 70,
+        height: 70,
+        ImageConfiguration(devicePixelRatio: pixelRatio),
+        "assets/imgs/passageiro.png"
+      )
+    );
+   markersList.add(marker2);
+   setState(() {
+     _markers = markersList;
+     _moveCamera(
+      CameraPosition(
+        target: LatLng(latLng1.latitude, latLng1.longitude),
+        zoom: 18
+      )
+    );
+   });
   }
 
   //Aceitando corrida
