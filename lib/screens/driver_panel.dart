@@ -56,9 +56,9 @@ class _DriverPanelState extends State<DriverPanel> {
   //Recuperando as requisições ativas do motorista
   Future<void> _recoverDriverActiveRequest() async{
     User user = await FirebaseUser.getCurrentUser();
-    DocumentSnapshot documentSnapshot = db.collection("requisicao_ativa_motorista").doc(user.uid).get() as DocumentSnapshot<Object?>;
+    DocumentSnapshot<Map<String, dynamic>> documentSnapshot = await db.collection("requisicao_ativa_motorista").doc(user.uid).get();
 
-    Map<String, dynamic>? requestData = documentSnapshot.data() as Map<String, dynamic>?;
+    Map<String, dynamic>? requestData = documentSnapshot.data();
 
     if(requestData == null){
       _addRequestListener();
