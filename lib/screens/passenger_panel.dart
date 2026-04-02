@@ -32,6 +32,9 @@ class _PassengerPanelState extends State<PassengerPanel> {
 
   final Set<Marker> _markers = {};
 
+  //Local do passageiro
+  Position? _passengerLocation;
+
   //Controles de exibição
   bool _showDestinyAddressBox = true;
   String _buttonText = "Chamar Uber";
@@ -77,6 +80,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
           target: LatLng(position.latitude, position.longitude),
           zoom: 19,
         );
+        _passengerLocation = position;
         _moveCamera(_cameraPosition);
       }
     });
@@ -95,6 +99,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
           target: LatLng(position.latitude, position.longitude),
           zoom: 19,
         );
+        _passengerLocation = position;
         _moveCamera(_cameraPosition);
     });
     
@@ -217,6 +222,8 @@ class _PassengerPanelState extends State<PassengerPanel> {
   Future<void> _saveRequest( Destiny destino) async{
     Request request = Request();
     Usuario passageiro = await FirebaseUser.getLoggedUserData();
+    passageiro.latitude = _passengerLocation!.latitude;
+    passageiro.longitude = _passengerLocation!.longitude;
     request.destino = destino;
     request.passageiro = passageiro;
     request.status = RequestStatus.aguardando;
