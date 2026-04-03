@@ -75,13 +75,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
     Position? position = await Geolocator.getLastKnownPosition();
     setState(() {
       if(position != null){
-        _showPassengerMarker(position);
-        _cameraPosition = CameraPosition(
-          target: LatLng(position.latitude, position.longitude),
-          zoom: 19,
-        );
-        _passengerLocation = position;
-        _moveCamera(_cameraPosition);
+        
       }
     });
   
@@ -284,12 +278,24 @@ class _PassengerPanelState extends State<PassengerPanel> {
   Future<void> _addActiveRequestListener() async{
     User user = await FirebaseUser.getCurrentUser();
     FirebaseFirestore db = FirebaseFirestore.instance;
-    db.collection("requisicao_ativa").doc(user.uid).snapshots().listen((DocumentSnapshot? snapshot){
-      final data = snapshot?.data();
-      if(data != null){
-        Map<String, dynamic> map = data as Map<String, dynamic>;
-        String status = map["status"];
-        _requestId = map["id_requisicao"];
+    DocumentSnapshot documentSnapshot = await db.collection("requisicao_ativa").doc(user.uid).get();
+
+    if(documentSnapshot.data() != null){
+      Map<String, dynamic> data = documentSnapshot.data() as Map<String, dynamic>;
+      _requestId = data["id_requisicao"];
+      _addRequestListener(_requestId);
+    }else{
+      _notCalledUberStatus();
+    }
+  }
+
+  Future<void> _addRequestListener(String requestId) async{
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    db.collection("requisicoes").doc(requestId).snapshots().listen((snapshot){
+      if(snapshot.data() != null){
+        Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+        String status = data["status"];
+        _requestId = data["id_requisicao"];
 
         switch(status){
           case RequestStatus.aguardando:
@@ -306,10 +312,8 @@ class _PassengerPanelState extends State<PassengerPanel> {
             break;
         }
       }
-      else{
-        _notCalledUberStatus();
-      }
     });
+      
   }
 
 
@@ -317,8 +321,9 @@ class _PassengerPanelState extends State<PassengerPanel> {
   @override
   void initState() {
     super.initState();
-    _initLocation();
     _addActiveRequestListener();
+    _initLocation();
+    
   }
 
 

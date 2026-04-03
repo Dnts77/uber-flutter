@@ -19,15 +19,16 @@ class Rides extends StatefulWidget {
 class _RidesState extends State<Rides> {
 
   final Completer<GoogleMapController> _mapController = Completer();
+  String? _statusMessage;
 
-  CameraPosition _cameraPosition = CameraPosition(
+  final CameraPosition _cameraPosition = CameraPosition(
     target: LatLng(-23.472543, -46.533509),
   );
 
   Set<Marker> _markers = {};
   Map<String, dynamic> _requestData = {};
 
-  late Position _driverLocation;
+  
 
   String _buttonText = "Aceitar corrida";
   Color _buttonColor = Color(0xff1ebbd8);
@@ -40,17 +41,9 @@ class _RidesState extends State<Rides> {
   
   Future<void> _getLastKnownPositon() async{
     Position? position = await Geolocator.getLastKnownPosition();
-    setState(() {
-      if(position != null){
-        _showDriverMarker(position);
-        _cameraPosition = CameraPosition(
-          target: LatLng(position.latitude, position.longitude),
-          zoom: 16,
-        );
-        //_moveCamera(_cameraPosition);
-        _driverLocation = position;
+    if(position != null){
+        
       }
-    });
   
   }
 
@@ -60,16 +53,10 @@ class _RidesState extends State<Rides> {
       accuracy: LocationAccuracy.high,
       distanceFilter: 10
     );
-    Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position){
-      _showDriverMarker(position);
-      _cameraPosition = CameraPosition(
-          target: LatLng(position.latitude, position.longitude),
-          zoom: 19,
-        );
-        //_moveCamera(_cameraPosition);
-        setState(() {
-          _driverLocation = position;
-        });
+    Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position? position){
+       if(position != null){
+          
+       }
     });
     
   }
@@ -89,25 +76,25 @@ class _RidesState extends State<Rides> {
   }
 
   
-  Future<void> _showDriverMarker(Position local) async{
+  Future<void> _showDriverMarker(Position local, String icon, String infoWindow) async{
     double pixelRatio = MediaQuery.of(context).devicePixelRatio;
 
-    Marker passengerMarker = Marker(
-      markerId: MarkerId("motorista"),
+    Marker driverMarker = Marker(
+      markerId: MarkerId(icon),
       position: LatLng(local.latitude, local.longitude),
       infoWindow: InfoWindow(
-        title: "Meu local"
+        title: infoWindow
       ),
       icon: await BitmapDescriptor.asset(
         width: 70,
         height: 70,
         ImageConfiguration(devicePixelRatio: pixelRatio),
-        "assets/imgs/motorista.png"
+        icon
       )
     );
     setState(() {
-      _markers.removeWhere((m) => m.markerId.value == "motorista");
-      _markers.add(passengerMarker);
+      _markers.removeWhere((m) => m.markerId.value == icon);
+      _markers.add(driverMarker);
     });
   }
 
@@ -124,10 +111,7 @@ class _RidesState extends State<Rides> {
   Future<void> _recoverRequest() async{
     String requestId  = widget.requestId;
     FirebaseFirestore db = FirebaseFirestore.instance;
-    DocumentSnapshot documentSnapshot = await db.collection("requisicoes").doc(requestId).get();
-
-    _requestData = documentSnapshot.data() as Map<String, dynamic>;
-    _addRequestListener();
+    DocumentSnapshot documentSnapshot = await db.collection("requisicoes").doc(requestId).get(); 
   }
 
   //Adicionando Listener da requisição
@@ -136,6 +120,7 @@ class _RidesState extends State<Rides> {
     String requestId = _requestData["id"];
     db.collection("requisicoes").doc(requestId).snapshots().listen((snapshot){
       if(snapshot.data() != null){
+        _requestData = snapshot.data() as Map<String, dynamic>;
         Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
         String status = data["status"];
 
@@ -160,6 +145,29 @@ class _RidesState extends State<Rides> {
 
   void _waitingStatus(){
     _changeMainButton("Aceitar corrida", Color(0xff1ebbd8), (){acceptRide();});
+     
+     double driverLatitude = _requestData["motorista"]["latitude"];
+     double driverLongitude = _requestData["motorista"]["longitude"];
+     Position position = Position(
+      latitude: driverLatitude,
+      longitude: driverLongitude,
+      timestamp: DateTime.now(),
+      accuracy: 0,
+      altitude: 0,
+      altitudeAccuracy: 0,
+      heading: 0,
+      headingAccuracy: 0,
+      speed: 0,
+      speedAccuracy: 0,
+    );
+    _showDriverMarker(position, "assets/imgs/motorista.png", "Motorista");
+     
+    CameraPosition cameraPosition = CameraPosition(
+      target: LatLng(position.latitude, position.longitude),
+      zoom: 19,
+    );
+
+    _moveCamera(cameraPosition);
   }
 
   Future<void> _moveCameraBounds(LatLngBounds latLngBounds) async{
@@ -174,13 +182,15 @@ class _RidesState extends State<Rides> {
 
   //Status de "A caminho"
   void _onTheWay(){
-    _changeMainButton("A caminho do passageiro", Colors.grey, null);
-
+    _changeMainButton("Iniciar corrida", Color(0xff1ebbd8), (){
+      _initRide();
+    });
+    _statusMessage = "A caminho do passageiro";
     double passengerLatitude = _requestData["passageiro"]["latitude"];
     double passengerLongitude = _requestData["passageiro"]["longitude"];
 
-    double driverLatitude = _driverLocation.latitude;
-    double driverLongitude = _driverLocation.longitude;
+    double driverLatitude = _requestData["motorista"]["latitude"];
+    double driverLongitude = _requestData["motorista"]["longitude"];
 
     _showTwoMarkers(
       LatLng(driverLatitude, driverLongitude),
@@ -207,16 +217,17 @@ class _RidesState extends State<Rides> {
 
     Future.delayed(Duration(milliseconds: 300) , (){
       _moveCameraBounds(
-      LatLngBounds(
-        northeast: LatLng(nLat, nLon),
-        southwest: LatLng(sLat, sLon),
-      )
-    );
-  }); 
+        LatLngBounds(
+          northeast: LatLng(nLat, nLon),
+          southwest: LatLng(sLat, sLon),
+        )
+      );
+    }); 
+  }
 
-    print("latitude motorista" + _driverLocation.latitude.toString());
-    print("latitude passageiro" + _requestData["passageiro"]["latitude"].toString());
 
+  //Iniciando corrida
+  void _initRide(){
 
   }
 
@@ -263,11 +274,11 @@ class _RidesState extends State<Rides> {
   Future<void> acceptRide() async{
 
     Usuario motorista = await FirebaseUser.getLoggedUserData();
-    motorista.latitude = _driverLocation.latitude;
-    motorista.longitude = _driverLocation.longitude;
+    motorista.latitude = _requestData["motorista"]["latitude"];
+    motorista.longitude = _requestData["motorista"]["longitude"];
 
-    String requestId = _requestData["id"];
     FirebaseFirestore db = FirebaseFirestore.instance;
+    String requestId = _requestData["id"];
     db.collection("requisicoes").doc(requestId).update({
      "motorista": motorista.toMap(),
      "status": RequestStatus.aCaminho,
@@ -290,7 +301,8 @@ class _RidesState extends State<Rides> {
   void initState() {
     super.initState();
     _initLocation();
-    _recoverRequest();
+    //_recoverRequest();
+    _addRequestListener();
   }
 
   
@@ -299,7 +311,7 @@ class _RidesState extends State<Rides> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Painel de corridas"),  
+        title: Text("Painel de corrida - $_statusMessage"),  
       ),
       body: Container(
         padding: EdgeInsets.only(bottom: 2),
