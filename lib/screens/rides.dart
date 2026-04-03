@@ -21,7 +21,7 @@ class _RidesState extends State<Rides> {
   final Completer<GoogleMapController> _mapController = Completer();
 
   CameraPosition _cameraPosition = CameraPosition(
-    target: LatLng(-23.472297, -46.530986),
+    target: LatLng(-23.472543, -46.533509),
   );
 
   Set<Marker> _markers = {};
@@ -42,12 +42,12 @@ class _RidesState extends State<Rides> {
     Position? position = await Geolocator.getLastKnownPosition();
     setState(() {
       if(position != null){
-        _showPassengerMarker(position);
+        _showDriverMarker(position);
         _cameraPosition = CameraPosition(
           target: LatLng(position.latitude, position.longitude),
-          zoom: 19,
+          zoom: 16,
         );
-        _moveCamera(_cameraPosition);
+        //_moveCamera(_cameraPosition);
         _driverLocation = position;
       }
     });
@@ -61,12 +61,12 @@ class _RidesState extends State<Rides> {
       distanceFilter: 10
     );
     Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position){
-      _showPassengerMarker(position);
+      _showDriverMarker(position);
       _cameraPosition = CameraPosition(
           target: LatLng(position.latitude, position.longitude),
           zoom: 19,
         );
-        _moveCamera(_cameraPosition);
+        //_moveCamera(_cameraPosition);
         setState(() {
           _driverLocation = position;
         });
@@ -89,11 +89,11 @@ class _RidesState extends State<Rides> {
   }
 
   
-  Future<void> _showPassengerMarker(Position local) async{
+  Future<void> _showDriverMarker(Position local) async{
     double pixelRatio = MediaQuery.of(context).devicePixelRatio;
 
     Marker passengerMarker = Marker(
-      markerId: MarkerId("marcador-motorista"),
+      markerId: MarkerId("motorista"),
       position: LatLng(local.latitude, local.longitude),
       infoWindow: InfoWindow(
         title: "Meu local"
@@ -106,6 +106,7 @@ class _RidesState extends State<Rides> {
       )
     );
     setState(() {
+      _markers.removeWhere((m) => m.markerId.value == "motorista");
       _markers.add(passengerMarker);
     });
   }
@@ -161,6 +162,15 @@ class _RidesState extends State<Rides> {
     _changeMainButton("Aceitar corrida", Color(0xff1ebbd8), (){acceptRide();});
   }
 
+  Future<void> _moveCameraBounds(LatLngBounds latLngBounds) async{
+    GoogleMapController googleMapController = await _mapController.future;
+    googleMapController.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        latLngBounds,
+        100
+      )
+    );
+  }
 
   //Status de "A caminho"
   void _onTheWay(){
@@ -169,13 +179,45 @@ class _RidesState extends State<Rides> {
     double passengerLatitude = _requestData["passageiro"]["latitude"];
     double passengerLongitude = _requestData["passageiro"]["longitude"];
 
-    double driverLatitude = _requestData["motorista"]["latitude"];
-    double driverLongitude = _requestData["motorista"]["longitude"];
+    double driverLatitude = _driverLocation.latitude;
+    double driverLongitude = _driverLocation.longitude;
 
     _showTwoMarkers(
       LatLng(driverLatitude, driverLongitude),
       LatLng(passengerLatitude, passengerLongitude)
     );
+
+
+    double nLat, nLon, sLat, sLon;
+    if(driverLatitude <= passengerLatitude){
+      sLat = driverLatitude;
+      nLat = passengerLatitude;
+    }else{
+      sLat = passengerLatitude;
+      nLat = driverLatitude;
+    }
+
+    if(driverLongitude <= passengerLongitude){
+      sLon = driverLongitude;
+      nLon = passengerLongitude;
+    }else{
+      sLon = passengerLongitude;
+      nLon = driverLongitude;
+    }
+
+    Future.delayed(Duration(milliseconds: 300) , (){
+      _moveCameraBounds(
+      LatLngBounds(
+        northeast: LatLng(nLat, nLon),
+        southwest: LatLng(sLat, sLon),
+      )
+    );
+  }); 
+
+    print("latitude motorista" + _driverLocation.latitude.toString());
+    print("latitude passageiro" + _requestData["passageiro"]["latitude"].toString());
+
+
   }
 
   //Exibindo dois marcadores
@@ -184,7 +226,7 @@ class _RidesState extends State<Rides> {
 
     Set<Marker> markersList = {};
     Marker marker1 = Marker(
-      markerId: MarkerId("marcador-motorista"),
+      markerId: MarkerId("motorista"),
       position: LatLng(latLng1.latitude, latLng1.longitude),
       infoWindow: InfoWindow(
         title: "Local do motorista"
@@ -199,7 +241,7 @@ class _RidesState extends State<Rides> {
     markersList.add(marker1);
 
     Marker marker2 = Marker(
-      markerId: MarkerId("marcador-passageiro"),
+      markerId: MarkerId("passageiro"),
       position: LatLng(latLng2.latitude, latLng2.longitude),
       infoWindow: InfoWindow(
         title: "Local do passageiro"
@@ -214,12 +256,6 @@ class _RidesState extends State<Rides> {
    markersList.add(marker2);
    setState(() {
      _markers = markersList;
-     _moveCamera(
-      CameraPosition(
-        target: LatLng(latLng1.latitude, latLng1.longitude),
-        zoom: 18
-      )
-    );
    });
   }
 
@@ -256,6 +292,8 @@ class _RidesState extends State<Rides> {
     _initLocation();
     _recoverRequest();
   }
+
+  
 
   @override
   Widget build(BuildContext context) {
