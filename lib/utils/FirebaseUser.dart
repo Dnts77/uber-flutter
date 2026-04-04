@@ -30,4 +30,14 @@ class FirebaseUser {
     return usuario;
     
   }
+
+  static Future<void> updateLocationData(String requestId, double lat, double lon) async{
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    Usuario motorista = await getLoggedUserData();
+    motorista.latitude = lat;
+    motorista.longitude = lon;
+    db.collection("requisicoes").doc(requestId).update({
+      "motorista": motorista.toMap()
+    });
+  }
 }

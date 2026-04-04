@@ -19,7 +19,7 @@ class Rides extends StatefulWidget {
 class _RidesState extends State<Rides> {
 
   final Completer<GoogleMapController> _mapController = Completer();
-  String? _statusMessage;
+  String _statusMessage = "";
 
   final CameraPosition _cameraPosition = CameraPosition(
     target: LatLng(-23.472543, -46.533509),
@@ -27,6 +27,9 @@ class _RidesState extends State<Rides> {
 
   Set<Marker> _markers = {};
   Map<String, dynamic> _requestData = {};
+  Position? _driverLocation;
+  String? _requestId;
+  String _requestStatus = RequestStatus.aguardando;
 
   
 
@@ -54,15 +57,32 @@ class _RidesState extends State<Rides> {
       distanceFilter: 10
     );
     Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position? position){
+     
        if(position != null){
-          
-       }
+        if (_requestId != null && _requestId!.isNotEmpty) {
+          if(_requestStatus != RequestStatus.aguardando){
+            FirebaseUser.updateLocationData(
+              _requestId!,
+              position.latitude,
+              position.longitude,
+            );
+          }
+        }
+        setState(() {
+          _driverLocation = position;
+        });
+        
+        
+        
+      }
     });
     
   }
 
    
   Future<void> _moveCamera(CameraPosition cameraPosition) async{
+    if(!_mapController.isCompleted)return;
+
     GoogleMapController googleMapController = await _mapController.future;
     googleMapController.animateCamera(
       CameraUpdate.newCameraPosition(cameraPosition)
@@ -71,7 +91,7 @@ class _RidesState extends State<Rides> {
 
   
   Future<void> _initLocation() async{
-    await _getLastKnownPositon();
+    //await _getLastKnownPositon();
     _addLocationListener();
   }
 
@@ -117,14 +137,14 @@ class _RidesState extends State<Rides> {
   //Adicionando Listener da requisição
   Future<void>_addRequestListener() async{
     FirebaseFirestore db = FirebaseFirestore.instance;
-    String requestId = _requestData["id"];
-    db.collection("requisicoes").doc(requestId).snapshots().listen((snapshot){
+    
+    db.collection("requisicoes").doc(_requestId).snapshots().listen((snapshot){
       if(snapshot.data() != null){
         _requestData = snapshot.data() as Map<String, dynamic>;
         Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
-        String status = data["status"];
+        _requestStatus = data["status"];
 
-        switch(status){
+        switch(_requestStatus){
           case RequestStatus.aguardando:
             _waitingStatus();
             break;
@@ -160,6 +180,8 @@ class _RidesState extends State<Rides> {
       speed: 0,
       speedAccuracy: 0,
     );
+
+    if(_driverLocation == null)return;
     _showDriverMarker(position, "assets/imgs/motorista.png", "Motorista");
      
     CameraPosition cameraPosition = CameraPosition(
@@ -301,6 +323,7 @@ class _RidesState extends State<Rides> {
   void initState() {
     super.initState();
     _initLocation();
+    _requestId = widget.requestId;
     //_recoverRequest();
     _addRequestListener();
   }

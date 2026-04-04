@@ -24,13 +24,15 @@ class _PassengerPanelState extends State<PassengerPanel> {
 
   final Completer<GoogleMapController> _mapController = Completer();
   final TextEditingController _destinyController = TextEditingController(text: "Rua Força Pública, 89"); //Controller do botão "Chamar Uber"
-  late String _requestId;
+  String? _requestId;
 
-  CameraPosition _cameraPosition = CameraPosition(
+  final CameraPosition _cameraPosition = CameraPosition(
     target: LatLng(-23.472297, -46.530986),
   );
 
   final Set<Marker> _markers = {};
+
+  Map<String, dynamic>? _requestData;
 
   //Local do passageiro
   Position? _passengerLocation;
@@ -88,13 +90,20 @@ class _PassengerPanelState extends State<PassengerPanel> {
       distanceFilter: 10
     );
     Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position){
-      _showPassengerMarker(position);
-      _cameraPosition = CameraPosition(
-          target: LatLng(position.latitude, position.longitude),
-          zoom: 19,
-        );
-        _passengerLocation = position;
-        _moveCamera(_cameraPosition);
+     if( _requestId != null && _requestId!.isNotEmpty){
+      FirebaseUser.updateLocationData(
+        _requestId!,
+        position.latitude,
+        position.longitude
+      );
+     }else{
+      _notCalledUberStatus();
+     }
+     
+      setState(() {
+          _passengerLocation = position;
+      });
+     
     });
     
   }
@@ -132,7 +141,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
   //Inicializando os métodos do localização
   Future<void> _initLocation() async{
     await _checkPermissions();
-    await _getLastKnownPositon();
+    //await _getLastKnownPositon();
     _addLocationListener();
   }
 
@@ -235,6 +244,8 @@ class _PassengerPanelState extends State<PassengerPanel> {
 
    db.collection("requisicao_ativa").doc(passageiro.idUsuario).set(activeRequestData);
 
+   _waitingStatus();
+
   }
 
   //Mudando o botão
@@ -250,12 +261,56 @@ class _PassengerPanelState extends State<PassengerPanel> {
   void _notCalledUberStatus(){
     _showDestinyAddressBox = true;
     _changeMainButton("Chamar Uber", Color(0xff1ebbd8), (){_callUber();});
+     
+      if(_passengerLocation == null) return;
+     
+     Position position = Position(
+      latitude: _passengerLocation!.latitude,
+      longitude: _passengerLocation!.longitude,
+      timestamp: DateTime.now(),
+      accuracy: 0,
+      altitude: 0,
+      altitudeAccuracy: 0,
+      heading: 0,
+      headingAccuracy: 0,
+      speed: 0,
+      speedAccuracy: 0
+     );
+
+     _showPassengerMarker(position);
+      CameraPosition cameraPosition = CameraPosition(
+          target: LatLng(position.latitude, position.longitude),
+          zoom: 19,
+        );
+        _moveCamera(cameraPosition);
   }
 
   //Status -> Aguardando
   void _waitingStatus(){
      _showDestinyAddressBox = false;
     _changeMainButton("Cancelar", Colors.red, (){_cancelUber();});
+
+    double passengerLat = _requestData!["passageiro"]["latitude"];
+    double passengerLon = _requestData!["passageiro"]["longitude"];
+    Position position = Position(
+      latitude: passengerLat,
+      longitude: passengerLon,
+      timestamp: DateTime.now(),
+      accuracy: 0,
+      altitude: 0,
+      altitudeAccuracy: 0,
+      heading: 0,
+      headingAccuracy: 0,
+      speed: 0,
+      speedAccuracy: 0
+     );
+
+     _showPassengerMarker(position);
+      CameraPosition cameraPosition = CameraPosition(
+          target: LatLng(position.latitude, position.longitude),
+          zoom: 19,
+        );
+        _moveCamera(cameraPosition);
   }
   //Status -> A caminho
   void _onTheWay(){
@@ -283,7 +338,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
     if(documentSnapshot.data() != null){
       Map<String, dynamic> data = documentSnapshot.data() as Map<String, dynamic>;
       _requestId = data["id_requisicao"];
-      _addRequestListener(_requestId);
+      _addRequestListener(_requestId!);
     }else{
       _notCalledUberStatus();
     }
@@ -294,6 +349,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
     db.collection("requisicoes").doc(requestId).snapshots().listen((snapshot){
       if(snapshot.data() != null){
         Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+        _requestData = data;
         String status = data["status"];
         _requestId = data["id_requisicao"];
 
@@ -321,8 +377,8 @@ class _PassengerPanelState extends State<PassengerPanel> {
   @override
   void initState() {
     super.initState();
-    _addActiveRequestListener();
     _initLocation();
+    _addActiveRequestListener();
     
   }
 
