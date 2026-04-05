@@ -30,7 +30,9 @@ class _PassengerPanelState extends State<PassengerPanel> {
     target: LatLng(-23.472297, -46.530986),
   );
 
-  final Set<Marker> _markers = {};
+  Set<Marker> _markers = {};
+
+  StreamSubscription<DocumentSnapshot>? _requestStreamSubscription;
 
   Map<String, dynamic>? _requestData;
 
@@ -97,13 +99,11 @@ class _PassengerPanelState extends State<PassengerPanel> {
         position.longitude
       );
      }else{
+      setState(() {
+        _passengerLocation = position;
+      });
       _notCalledUberStatus();
      }
-     
-      setState(() {
-          _passengerLocation = position;
-      });
-     
     });
     
   }
@@ -244,7 +244,13 @@ class _PassengerPanelState extends State<PassengerPanel> {
 
    db.collection("requisicao_ativa").doc(passageiro.idUsuario).set(activeRequestData);
 
-   _waitingStatus();
+   
+
+   //Listener
+   if(_requestStreamSubscription == null){
+      _addRequestListener(request.id!);
+   }
+  
 
   }
 
@@ -262,27 +268,30 @@ class _PassengerPanelState extends State<PassengerPanel> {
     _showDestinyAddressBox = true;
     _changeMainButton("Chamar Uber", Color(0xff1ebbd8), (){_callUber();});
      
-      if(_passengerLocation == null) return;
-     
-     Position position = Position(
-      latitude: _passengerLocation!.latitude,
-      longitude: _passengerLocation!.longitude,
-      timestamp: DateTime.now(),
-      accuracy: 0,
-      altitude: 0,
-      altitudeAccuracy: 0,
-      heading: 0,
-      headingAccuracy: 0,
-      speed: 0,
-      speedAccuracy: 0
-     );
+      
+      if(_passengerLocation != null){
+        Position position = Position(
+        latitude: _passengerLocation!.latitude,
+        longitude: _passengerLocation!.longitude,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
 
-     _showPassengerMarker(position);
+      _showPassengerMarker(position);
       CameraPosition cameraPosition = CameraPosition(
-          target: LatLng(position.latitude, position.longitude),
-          zoom: 19,
-        );
-        _moveCamera(cameraPosition);
+        target: LatLng(position.latitude, position.longitude),
+        zoom: 19,
+      );
+      _moveCamera(cameraPosition);
+      }
+     
+     
   }
 
   //Status -> Aguardando
@@ -316,6 +325,94 @@ class _PassengerPanelState extends State<PassengerPanel> {
   void _onTheWay(){
     _showDestinyAddressBox = false;
     _changeMainButton("Motorista a caminho", Colors.grey, null);
+    double passengerLatitude = _requestData!["passageiro"]["latitude"];
+    double passengerLongitude = _requestData!["passageiro"]["longitude"];
+
+    double driverLatitude = _requestData!["motorista"]["latitude"];
+    double driverLongitude = _requestData!["motorista"]["longitude"];
+
+    _showTwoMarkers(
+      LatLng(driverLatitude, driverLongitude),
+      LatLng(passengerLatitude, passengerLongitude)
+    );
+
+
+    double nLat, nLon, sLat, sLon;
+    if(driverLatitude <= passengerLatitude){
+      sLat = driverLatitude;
+      nLat = passengerLatitude;
+    }else{
+      sLat = passengerLatitude;
+      nLat = driverLatitude;
+    }
+
+    if(driverLongitude <= passengerLongitude){
+      sLon = driverLongitude;
+      nLon = passengerLongitude;
+    }else{
+      sLon = passengerLongitude;
+      nLon = driverLongitude;
+    }
+
+    Future.delayed(Duration(milliseconds: 300) , (){
+      _moveCameraBounds(
+        LatLngBounds(
+          northeast: LatLng(nLat, nLon),
+          southwest: LatLng(sLat, sLon),
+        )
+      );
+    });
+  }
+
+
+  //Bounds da camera 
+  Future<void> _moveCameraBounds(LatLngBounds latLngBounds) async{
+    GoogleMapController googleMapController = await _mapController.future;
+    googleMapController.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        latLngBounds,
+        100
+      )
+    );
+  }
+  
+  //Adicionando 2 marcadores
+  Future<void> _showTwoMarkers(LatLng latLng1, LatLng latLng2) async{
+    double pixelRatio = MediaQuery.of(context).devicePixelRatio;
+
+    Set<Marker> markersList = {};
+    Marker marker1 = Marker(
+      markerId: MarkerId("motorista"),
+      position: LatLng(latLng1.latitude, latLng1.longitude),
+      infoWindow: InfoWindow(
+        title: "Local do motorista"
+      ),
+      icon: await BitmapDescriptor.asset(
+        width: 70,
+        height: 70,
+        ImageConfiguration(devicePixelRatio: pixelRatio),
+        "assets/imgs/motorista.png"
+      )
+    );
+    markersList.add(marker1);
+
+    Marker marker2 = Marker(
+      markerId: MarkerId("passageiro"),
+      position: LatLng(latLng2.latitude, latLng2.longitude),
+      infoWindow: InfoWindow(
+        title: "Local do passageiro"
+      ),
+      icon: await BitmapDescriptor.asset(
+        width: 70,
+        height: 70,
+        ImageConfiguration(devicePixelRatio: pixelRatio),
+        "assets/imgs/passageiro.png"
+      )
+    );
+   markersList.add(marker2);
+   setState(() {
+     _markers = markersList;
+   });
   }
 
   //Cancelar uber
@@ -346,7 +443,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
 
   Future<void> _addRequestListener(String requestId) async{
     FirebaseFirestore db = FirebaseFirestore.instance;
-    db.collection("requisicoes").doc(requestId).snapshots().listen((snapshot){
+    _requestStreamSubscription = db.collection("requisicoes").doc(requestId).snapshots().listen((snapshot){
       if(snapshot.data() != null){
         Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
         _requestData = data;
@@ -523,5 +620,10 @@ class _PassengerPanelState extends State<PassengerPanel> {
         ),
       ),
     );
+  }
+  @override
+  void dispose() {
+    super.dispose();
+    _requestStreamSubscription!.cancel();
   }
 }
