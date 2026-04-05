@@ -45,7 +45,7 @@ class _RidesState extends State<Rides> {
   Future<void> _getLastKnownPositon() async{
     Position? position = await Geolocator.getLastKnownPosition();
     if(position != null){
-        
+        _driverLocation = position;
       }
   
   }
@@ -66,14 +66,13 @@ class _RidesState extends State<Rides> {
               position.latitude,
               position.longitude,
             );
+          }else{
+            setState(() {
+              _driverLocation = position;
+            });
+            _waitingStatus();
           }
         }
-        setState(() {
-          _driverLocation = position;
-        });
-        
-        
-        
       }
     });
     
@@ -91,7 +90,7 @@ class _RidesState extends State<Rides> {
 
   
   Future<void> _initLocation() async{
-    //await _getLastKnownPositon();
+    await _getLastKnownPositon();
     _addLocationListener();
   }
 
@@ -165,31 +164,33 @@ class _RidesState extends State<Rides> {
 
   void _waitingStatus(){
     _changeMainButton("Aceitar corrida", Color(0xff1ebbd8), (){acceptRide();});
-     
-     double driverLatitude = _requestData["motorista"]["latitude"];
-     double driverLongitude = _requestData["motorista"]["longitude"];
-     Position position = Position(
-      latitude: driverLatitude,
-      longitude: driverLongitude,
-      timestamp: DateTime.now(),
-      accuracy: 0,
-      altitude: 0,
-      altitudeAccuracy: 0,
-      heading: 0,
-      headingAccuracy: 0,
-      speed: 0,
-      speedAccuracy: 0,
-    );
 
-    if(_driverLocation == null)return;
-    _showDriverMarker(position, "assets/imgs/motorista.png", "Motorista");
-     
-    CameraPosition cameraPosition = CameraPosition(
-      target: LatLng(position.latitude, position.longitude),
-      zoom: 19,
-    );
+    if(_driverLocation != null){
+      double driverLatitude = _driverLocation!.latitude;
+      double driverLongitude = _driverLocation!.longitude;
+      Position position = Position(
+        latitude: driverLatitude,
+        longitude: driverLongitude,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
 
-    _moveCamera(cameraPosition);
+      if (_driverLocation == null) return;
+      _showDriverMarker(position, "assets/imgs/motorista.png", "Motorista");
+
+      CameraPosition cameraPosition = CameraPosition(
+        target: LatLng(position.latitude, position.longitude),
+        zoom: 19,
+      );
+
+      _moveCamera(cameraPosition);
+    }
   }
 
   Future<void> _moveCameraBounds(LatLngBounds latLngBounds) async{
@@ -250,7 +251,24 @@ class _RidesState extends State<Rides> {
 
   //Iniciando corrida
   void _initRide(){
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    db.collection("requisicoes").doc(_requestId).update({
+      "origem" : {
+        "latitude" : _requestData["motorista"]["latitude"],
+        "longitude" : _requestData["motorista"]["longitude"],
+      },
+      "status" : RequestStatus.viagem
+    });
+    
+    String passengerId = _requestData["passageiro"]["idUsuario"];
+    db.collection("requisicao_ativa").doc(passengerId).update({
+      "status": RequestStatus.viagem
+    });
 
+    String driverId = _requestData["motorista"]["idUsuario"];
+    db.collection("requisicao_ativa_motorista").doc(driverId).update({
+      "status": RequestStatus.viagem
+    });
   }
 
   //Exibindo dois marcadores
@@ -296,8 +314,8 @@ class _RidesState extends State<Rides> {
   Future<void> acceptRide() async{
 
     Usuario motorista = await FirebaseUser.getLoggedUserData();
-    motorista.latitude = _requestData["motorista"]["latitude"];
-    motorista.longitude = _requestData["motorista"]["longitude"];
+    motorista.latitude = _driverLocation!.latitude;
+    motorista.longitude = _driverLocation!.longitude;
 
     FirebaseFirestore db = FirebaseFirestore.instance;
     String requestId = _requestData["id"];
