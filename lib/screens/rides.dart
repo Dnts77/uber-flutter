@@ -148,10 +148,10 @@ class _RidesState extends State<Rides> {
             _waitingStatus();
             break;
           case RequestStatus.aCaminho:
-            _onTheWay();
+            _onTheWayStatus();
             break;
           case RequestStatus.viagem:
-
+            _travellingStatus();
             break;
           case RequestStatus.finalizada:
 
@@ -204,7 +204,7 @@ class _RidesState extends State<Rides> {
   }
 
   //Status de "A caminho"
-  void _onTheWay(){
+  void _onTheWayStatus(){
     _changeMainButton("Iniciar corrida", Color(0xff1ebbd8), (){
       _initRide();
     });
@@ -236,6 +236,57 @@ class _RidesState extends State<Rides> {
     }else{
       sLon = passengerLongitude;
       nLon = driverLongitude;
+    }
+
+    Future.delayed(Duration(milliseconds: 300) , (){
+      _moveCameraBounds(
+        LatLngBounds(
+          northeast: LatLng(nLat, nLon),
+          southwest: LatLng(sLat, sLon),
+        )
+      );
+    }); 
+  }
+
+
+  //Método para encerrar corrida
+  void _finishRide(){
+
+  }
+  
+  //Status de "Viagem"
+   void _travellingStatus(){
+    _changeMainButton("Finalizar corrida", Color(0xff1ebbd8), (){
+      _finishRide();
+    });
+    _statusMessage = "Em viagem";
+    double destinyLatitude = _requestData["destino"]["latitude"];
+    double destinyLongitude = _requestData["destino"]["longitude"];
+
+    double originLatitude = _requestData["motorista"]["latitude"];
+    double originLongitude = _requestData["motorista"]["longitude"];
+
+    _showTwoMarkers(
+      LatLng(originLatitude, originLongitude),
+      LatLng(destinyLatitude, destinyLongitude)
+    );
+
+
+    double nLat, nLon, sLat, sLon;
+    if(originLatitude <= destinyLatitude){
+      sLat = originLatitude;
+      nLat = destinyLatitude;
+    }else{
+      sLat = destinyLatitude;
+      nLat = originLatitude;
+    }
+
+    if(originLongitude <= destinyLongitude){
+      sLon = originLongitude;
+      nLon = destinyLongitude;
+    }else{
+      sLon = destinyLongitude;
+      nLon = originLongitude;
     }
 
     Future.delayed(Duration(milliseconds: 300) , (){
