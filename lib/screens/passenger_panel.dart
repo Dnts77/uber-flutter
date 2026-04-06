@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:uber_flutter/model/CMarker.dart';
 import 'package:uber_flutter/model/Destiny.dart';
 import 'package:uber_flutter/model/Request.dart';
 import 'package:uber_flutter/model/Usuario.dart';
@@ -322,7 +323,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
         _moveCamera(cameraPosition);
   }
   //Status -> A caminho
-  void _onTheWay(){
+  void _onTheWayStatus(){
     _showDestinyAddressBox = false;
     _changeMainButton("Motorista a caminho", Colors.grey, null);
     double passengerLatitude = _requestData!["passageiro"]["latitude"];
@@ -331,27 +332,76 @@ class _PassengerPanelState extends State<PassengerPanel> {
     double driverLatitude = _requestData!["motorista"]["latitude"];
     double driverLongitude = _requestData!["motorista"]["longitude"];
 
-    _showTwoMarkers(
+   CMarker originMarker = CMarker(
       LatLng(driverLatitude, driverLongitude),
-      LatLng(passengerLatitude, passengerLongitude)
+      "assets/imgs/motorista.png",
+      "Local motorista"
+    );
+    
+    CMarker destinyMarker = CMarker(
+      LatLng(passengerLatitude, passengerLongitude),
+      "assets/imgs/passageiro.png",
+      "Local destino"
+    );
+
+    _showCentralizeTwoMarkers(originMarker, destinyMarker);
+  }
+
+  void _travellingStatus(){
+    _showDestinyAddressBox = false;
+    _changeMainButton("Em viagem", Colors.grey, null);
+    double destinyLatitude = _requestData!["destino"]["latitude"];
+    double destinyLongitude = _requestData!["destino"]["longitude"];
+
+    double originLatitude = _requestData!["motorista"]["latitude"];
+    double originLongitude = _requestData!["motorista"]["longitude"];
+
+    CMarker originMarker = CMarker(
+      LatLng(originLatitude, originLongitude),
+      "assets/imgs/motorista.png",
+      "Local motorista"
+    );
+    
+    CMarker destinyMarker = CMarker(
+      LatLng(destinyLatitude, destinyLongitude),
+      "assets/imgs/destino.png",
+      "Local destino"
+    );
+
+    _showCentralizeTwoMarkers(originMarker, destinyMarker);
+  }
+
+
+
+  void _showCentralizeTwoMarkers(CMarker originMarker, CMarker destinyMarker ){
+
+    double originLatitude = originMarker.local.latitude;
+    double originLongitude = originMarker.local.longitude;
+
+    double destinyLatitude = destinyMarker.local.latitude;
+    double destinyLongitude = destinyMarker.local.longitude;
+
+    _showTwoMarkers(
+      originMarker,
+      destinyMarker
     );
 
 
     double nLat, nLon, sLat, sLon;
-    if(driverLatitude <= passengerLatitude){
-      sLat = driverLatitude;
-      nLat = passengerLatitude;
+    if(originLatitude <= destinyLatitude){
+      sLat = originLatitude;
+      nLat = destinyLatitude;
     }else{
-      sLat = passengerLatitude;
-      nLat = driverLatitude;
+      sLat = destinyLatitude;
+      nLat = originLatitude;
     }
 
-    if(driverLongitude <= passengerLongitude){
-      sLon = driverLongitude;
-      nLon = passengerLongitude;
+    if(originLongitude <= destinyLongitude){
+      sLon = originLongitude;
+      nLon = destinyLongitude;
     }else{
-      sLon = passengerLongitude;
-      nLon = driverLongitude;
+      sLon = destinyLongitude;
+      nLon = originLongitude;
     }
 
     Future.delayed(Duration(milliseconds: 300) , (){
@@ -361,7 +411,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
           southwest: LatLng(sLat, sLon),
         )
       );
-    });
+    }); 
   }
 
 
@@ -377,39 +427,43 @@ class _PassengerPanelState extends State<PassengerPanel> {
   }
   
   //Adicionando 2 marcadores
-  Future<void> _showTwoMarkers(LatLng latLng1, LatLng latLng2) async{
+  Future<void> _showTwoMarkers( CMarker originMarker, CMarker destinyMarker ) async{
     double pixelRatio = MediaQuery.of(context).devicePixelRatio;
 
-    Set<Marker> markersList = {};
-    Marker marker1 = Marker(
-      markerId: MarkerId("motorista"),
-      position: LatLng(latLng1.latitude, latLng1.longitude),
-      infoWindow: InfoWindow(
-        title: "Local do motorista"
-      ),
-      icon: await BitmapDescriptor.asset(
-        width: 70,
-        height: 70,
-        ImageConfiguration(devicePixelRatio: pixelRatio),
-        "assets/imgs/motorista.png"
-      )
-    );
-    markersList.add(marker1);
+    LatLng originLatLng = originMarker.local;
+    LatLng destinyLatLng = destinyMarker.local;
 
-    Marker marker2 = Marker(
-      markerId: MarkerId("passageiro"),
-      position: LatLng(latLng2.latitude, latLng2.longitude),
+    Set<Marker> markersList = {};
+    Marker originMarker1 = Marker(
+      markerId: MarkerId(originMarker.imagePath),
+      position: LatLng(originLatLng.latitude, originLatLng.longitude),
       infoWindow: InfoWindow(
-        title: "Local do passageiro"
+        title: originMarker.title
       ),
       icon: await BitmapDescriptor.asset(
         width: 70,
         height: 70,
         ImageConfiguration(devicePixelRatio: pixelRatio),
-        "assets/imgs/passageiro.png"
+        originMarker.imagePath
       )
     );
-   markersList.add(marker2);
+    markersList.add(originMarker1);
+
+    Marker destinyMarker1 = Marker(
+      markerId: MarkerId(destinyMarker.imagePath),
+      position: LatLng(destinyLatLng.latitude, destinyLatLng.longitude),
+      infoWindow: InfoWindow(
+        title: destinyMarker.title
+      ),
+      icon: await BitmapDescriptor.asset(
+        width: 70,
+        height: 70,
+        ImageConfiguration(devicePixelRatio: pixelRatio),
+        destinyMarker.imagePath
+      )
+    );
+   markersList.add(destinyMarker1);
+   
    setState(() {
      _markers = markersList;
    });
@@ -455,10 +509,10 @@ class _PassengerPanelState extends State<PassengerPanel> {
             _waitingStatus();
             break;
           case RequestStatus.aCaminho:
-            _onTheWay();
+            _onTheWayStatus();
             break;
           case RequestStatus.viagem:
-
+            _travellingStatus();
             break;
           case RequestStatus.finalizada:
 
