@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
 import 'package:uber_flutter/model/Usuario.dart';
 import 'package:uber_flutter/utils/FirebaseUser.dart';
 import 'package:uber_flutter/utils/RequestStatus.dart';
@@ -125,14 +126,6 @@ class _RidesState extends State<Rides> {
     });
   }
 
-
-  //Recuperando a requisição
-  Future<void> _recoverRequest() async{
-    String requestId  = widget.requestId;
-    FirebaseFirestore db = FirebaseFirestore.instance;
-    DocumentSnapshot documentSnapshot = await db.collection("requisicoes").doc(requestId).get(); 
-  }
-
   //Adicionando Listener da requisição
   Future<void>_addRequestListener() async{
     FirebaseFirestore db = FirebaseFirestore.instance;
@@ -154,7 +147,7 @@ class _RidesState extends State<Rides> {
             _travellingStatus();
             break;
           case RequestStatus.finalizada:
-
+            _finishedStatus();
             break;
         }
 
@@ -251,6 +244,55 @@ class _RidesState extends State<Rides> {
 
   //Método para encerrar corrida
   void _finishRide(){
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    db.collection("requisicoes").doc(_requestId).update({
+      "status" : RequestStatus.finalizada
+    });
+    
+    String passengerId = _requestData["passageiro"]["idUsuario"];
+    db.collection("requisicao_ativa").doc(passengerId).update({
+      "status": RequestStatus.finalizada
+    });
+
+    String driverId = _requestData["motorista"]["idUsuario"];
+    db.collection("requisicao_ativa_motorista").doc(driverId).update({
+      "status": RequestStatus.finalizada
+    });
+  }
+
+
+  //Status de "Finalizada"
+  Future<void> _finishedStatus() async{
+
+    double destinyLatitude = _requestData["destino"]["latitude"];
+    double destinyLongitude = _requestData["destino"]["longitude"];
+
+    double originLatitude = _requestData["origem"]["latitude"];
+    double originLongitude = _requestData["origem"]["longitude"];
+
+    double inMetersDistance = Geolocator.distanceBetween(
+      originLatitude,
+      originLongitude,
+      destinyLatitude,
+      destinyLongitude
+    );
+
+    double inKmDistance = inMetersDistance / 1000;
+
+    //R$ 8 por km 
+    double ridePrice = inKmDistance * 8;
+
+    var f = NumberFormat("#,##0.00, pt_BR");
+    var formattedRidePrice = f.format(ridePrice);
+
+    _changeMainButton("Confirmar - R\$ $formattedRidePrice", Color(0xff1ebbd8), (){
+      _confirmRideEnd();
+    });
+    _statusMessage = "Viagem finalizada"; 
+  }
+
+  //Confirmando o fim da corrida
+  void _confirmRideEnd(){
 
   }
   
