@@ -15,6 +15,7 @@ class RequestStatus {
   static const aCaminho = "A_caminho";
   static const viagem = "viagem";
   static const finalizada = "finalizada";
+  static const confirmada = "confirmada";
   static const cancelada = "cancelada";
   
 }
