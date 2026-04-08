@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:intl/intl.dart';
 import 'package:uber_flutter/model/CMarker.dart';
 import 'package:uber_flutter/model/Destiny.dart';
 import 'package:uber_flutter/model/Request.dart';
@@ -80,7 +81,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
     Position? position = await Geolocator.getLastKnownPosition();
     setState(() {
       if(position != null){
-        
+        _passengerLocation = position;
       }
     });
   
@@ -97,7 +98,8 @@ class _PassengerPanelState extends State<PassengerPanel> {
       FirebaseUser.updateLocationData(
         _requestId!,
         position.latitude,
-        position.longitude
+        position.longitude,
+        "passageiro"
       );
      }else{
       setState(() {
@@ -142,7 +144,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
   //Inicializando os métodos do localização
   Future<void> _initLocation() async{
     await _checkPermissions();
-    //await _getLastKnownPositon();
+    await _getLastKnownPositon();
     _addLocationListener();
   }
 
@@ -371,7 +373,110 @@ class _PassengerPanelState extends State<PassengerPanel> {
     _showCentralizeTwoMarkers(originMarker, destinyMarker);
   }
 
+   Future<void> _finishedStatus() async{
 
+    double destinyLatitude = _requestData!["destino"]["latitude"];
+    double destinyLongitude = _requestData!["destino"]["longitude"];
+
+    double originLatitude = _requestData!["origem"]["latitude"];
+    double originLongitude = _requestData!["origem"]["longitude"];
+
+    double inMetersDistance = Geolocator.distanceBetween(
+      originLatitude,
+      originLongitude,
+      destinyLatitude,
+      destinyLongitude
+    );
+
+    double inKmDistance = inMetersDistance / 1000;
+
+    //R$ 8 por km 
+    double ridePrice = inKmDistance * 8;
+
+    var f = NumberFormat("#,##0.00", "pt_BR");
+    var formattedRidePrice = f.format(ridePrice);
+
+    _changeMainButton("Total - R\$ $formattedRidePrice", Colors.green, (){});
+
+    _markers = {};
+    Position position = Position(
+        latitude: destinyLatitude,
+        longitude: destinyLongitude,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
+
+      _showMarker(position, "assets/imgs/destino.png", "Destino");
+
+      CameraPosition cameraPosition = CameraPosition(
+        target: LatLng(position.latitude, position.longitude),
+        zoom: 19,
+      );
+
+      _moveCamera(cameraPosition);
+  }
+
+  void _confirmedStatus(){
+    if(_requestStreamSubscription != null){
+      _requestStreamSubscription!.cancel();
+      _requestStreamSubscription = null;
+    }
+      _showDestinyAddressBox = true;
+      _changeMainButton("Chamar Uber", Color(0xff1ebbd8), (){_callUber();});
+
+      double passengerLat = _requestData!["passageiro"]["latitude"];
+      double passengerLon = _requestData!["passageiro"]["longitude"];
+      Position position = Position(
+        latitude: passengerLat,
+        longitude: passengerLon,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
+
+    _showPassengerMarker(position);
+    CameraPosition cameraPosition = CameraPosition(
+      target: LatLng(position.latitude, position.longitude),
+      zoom: 19,
+    );
+    _moveCamera(cameraPosition);
+
+    _requestData = {};
+    
+  }
+
+  Future<void> _showMarker(Position local, String icon, String infoWindow) async{
+    double pixelRatio = MediaQuery.of(context).devicePixelRatio;
+
+    Marker marker = Marker(
+      markerId: MarkerId(icon),
+      position: LatLng(local.latitude, local.longitude),
+      infoWindow: InfoWindow(
+        title: infoWindow
+      ),
+      icon: await BitmapDescriptor.asset(
+        width: 70,
+        height: 70,
+        ImageConfiguration(devicePixelRatio: pixelRatio),
+        icon
+      )
+    );
+    setState(() {
+      _markers.removeWhere((m) => m.markerId.value == icon);
+      _markers.add(marker);
+    });
+  }
 
   void _showCentralizeTwoMarkers(CMarker originMarker, CMarker destinyMarker ){
 
@@ -477,6 +582,11 @@ class _PassengerPanelState extends State<PassengerPanel> {
       "status" : RequestStatus.cancelada
     }).then((_){
       db.collection("requisicao_ativa").doc(user.uid).delete();
+      _notCalledUberStatus();
+      if(_requestStreamSubscription != null){
+        _requestStreamSubscription!.cancel();
+        _requestStreamSubscription = null;
+      }
     });
   }
 
@@ -502,7 +612,7 @@ class _PassengerPanelState extends State<PassengerPanel> {
         Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
         _requestData = data;
         String status = data["status"];
-        _requestId = data["id_requisicao"];
+        _requestId = data["id"];
 
         switch(status){
           case RequestStatus.aguardando:
@@ -515,7 +625,10 @@ class _PassengerPanelState extends State<PassengerPanel> {
             _travellingStatus();
             break;
           case RequestStatus.finalizada:
-
+            _finishedStatus();
+            break;
+          case RequestStatus.confirmada:
+            _confirmedStatus();
             break;
         }
       }
@@ -679,5 +792,6 @@ class _PassengerPanelState extends State<PassengerPanel> {
   void dispose() {
     super.dispose();
     _requestStreamSubscription!.cancel();
+    _requestStreamSubscription = null;
   }
 }

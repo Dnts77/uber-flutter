@@ -66,6 +66,7 @@ class _RidesState extends State<Rides> {
               _requestId!,
               position.latitude,
               position.longitude,
+              "motorista"
             );
           }else{
             setState(() {
@@ -148,6 +149,9 @@ class _RidesState extends State<Rides> {
             break;
           case RequestStatus.finalizada:
             _finishedStatus();
+            break;
+          case RequestStatus.confirmada:
+            _confirmedStatus();
             break;
         }
 
@@ -282,18 +286,57 @@ class _RidesState extends State<Rides> {
     //R$ 8 por km 
     double ridePrice = inKmDistance * 8;
 
-    var f = NumberFormat("#,##0.00, pt_BR");
+    var f = NumberFormat("#,##0.00", "pt_BR");
     var formattedRidePrice = f.format(ridePrice);
 
     _changeMainButton("Confirmar - R\$ $formattedRidePrice", Color(0xff1ebbd8), (){
       _confirmRideEnd();
     });
     _statusMessage = "Viagem finalizada"; 
+    _markers = {};
+    Position position = Position(
+        latitude: destinyLatitude,
+        longitude: destinyLongitude,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
+
+      if (_driverLocation == null) return;
+      _showDriverMarker(position, "assets/imgs/destino.png", "Destino");
+
+      CameraPosition cameraPosition = CameraPosition(
+        target: LatLng(position.latitude, position.longitude),
+        zoom: 19,
+      );
+
+      _moveCamera(cameraPosition);
+
+  }
+
+  void _confirmedStatus(){
+    Navigator.pushReplacementNamed(context, "/painel-motorista");
   }
 
   //Confirmando o fim da corrida
   void _confirmRideEnd(){
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    db.collection("requisicoes").doc(_requestId).update({
+      "status" : RequestStatus.confirmada
+    });
+    
+    String passengerId = _requestData["passageiro"]["idUsuario"];
+    db.collection("requisicao_ativa").doc(passengerId).delete();
 
+    String driverId = _requestData["motorista"]["idUsuario"];
+    db.collection("requisicao_ativa_motorista").doc(driverId).delete();
+
+    
   }
   
   //Status de "Viagem"
