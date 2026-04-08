@@ -31,13 +31,13 @@ class FirebaseUser {
     
   }
 
-  static Future<void> updateLocationData(String requestId, double lat, double lon) async{
+  static Future<void> updateLocationData(String requestId, double lat, double lon, String userType) async{
     FirebaseFirestore db = FirebaseFirestore.instance;
-    Usuario motorista = await getLoggedUserData();
-    motorista.latitude = lat;
-    motorista.longitude = lon;
+    Usuario usuario = await getLoggedUserData();
+    usuario.latitude = lat;
+    usuario.longitude = lon;
     db.collection("requisicoes").doc(requestId).update({
-      "motorista": motorista.toMap()
+      userType : usuario.toMap()
     });
   }
 }
